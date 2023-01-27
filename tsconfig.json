@@ -2,12 +2,13 @@
 {
   "compilerOptions": {
     "outDir": "dist", // where to put the compiled JS files
-    "target": "ES2020", // which level of JS support to target
-    "module": "CommonJS", // which system for the program AMD, UMD, System, CommonJS
+    "target": "es2017", // which level of JS support to target
+    "module": "ESNext", // which system for the program AMD, UMD, System, CommonJS
     "esModuleInterop": true,
     // Recommended: Compiler complains about expressions implicitly typed as 'any'
-    "noImplicitAny": true
+    "noImplicitAny": true,
+    "moduleResolution": "node"
   },
-  "include": ["src"], // which files to compile
+  "include": ["src/**/*.ts"], // which files to compile
   "exclude": ["node_modules"] // which files to skip
 }
