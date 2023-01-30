@@ -1,4 +1,7 @@
 import { Gitlab, Types } from "@gitbeaker/node"; // All Resources
+import fs from "fs";
+import "dotenv/config";
+import * as path from "path";
 
 interface GitConfig {
   host: string;
@@ -18,37 +21,52 @@ class MyGitlab extends Gitlab {
    * Should automatically run during startup of the api.
    */
   async sync_repos() {
-    let entities = await this.getGroups();
-    console.log(entities);
+    const entities = await this.getGroups();
+
+    entities.groups.forEach((item: Types.GroupDetailSchema) => {
+      try {
+        fs.mkdirSync(this.getFolderPath(item.full_path), { recursive: true });
+      } catch (error) {
+        console.error(error);
+      }
+    });
+  }
+
+  getFolderPath(pathString: string): fs.PathLike {
+    let paths: string[] = pathString.split("/");
+    paths = paths.slice(0, paths.length);
+    return path.join(...paths);
   }
 
   async getGroups() {
-    let topLevelGroup: Types.GroupDetailSchema = await this.Groups.show(
+    const topLevelGroup: Types.GroupDetailSchema = await this.Groups.show(
       this.topLevelGroup
     );
-    let subgroups: Types.GroupDetailSchema[] = await this.getSubGroup(
+    const subgroups: Types.GroupDetailSchema[] = await this.getSubGroup(
       this.topLevelGroup
     );
-    let projects: Types.ProjectSchema[] = await this.Groups.projects(
+    const projects: Types.ProjectSchema[] = await this.Groups.projects(
       this.topLevelGroup
     );
-    return [
-      {
-        projects: projects,
-        groups: [topLevelGroup, ...subgroups],
-      },
-    ];
+    return {
+      projects,
+      groups: [topLevelGroup, ...subgroups],
+    };
   }
 
   /**
    * Recursively loops through groups to deliver the subgroups in one big array
    */
   async getSubGroup(groupId: number): Promise<Types.GroupDetailSchema[]> {
-    let groups: Record<string, unknown> = await this.Groups.subgroups(groupId);
-    let groupArray: Types.GroupDetailSchema[] = [];
+    const groups: Record<string, unknown> = await this.Groups.subgroups(
+      groupId
+    );
+    const groupArray: Types.GroupDetailSchema[] = [];
 
     for (let i = 0; i < groups.length; i++) {
-      let group: Types.GroupDetailSchema = groups[i] as Types.GroupDetailSchema;
+      const group: Types.GroupDetailSchema = groups[
+        i
+      ] as Types.GroupDetailSchema;
       groupArray.push(group);
       groupArray.push(...(await this.getSubGroup(group.id)));
     }

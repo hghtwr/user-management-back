@@ -1,5 +1,5 @@
 import { Gitlab } from "./git/gitlab.js";
-import {} from "dotenv/config";
+import "dotenv/config";
 
 export async function start() {
   const gitlab = new Gitlab(

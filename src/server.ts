@@ -3,8 +3,7 @@ import logger from "koa-logger";
 import * as HttpStatus from "http-status-codes";
 import { Router } from "./router.js";
 import { start } from "./startup.js";
-//import { Gitlab } from "@gitbeaker/node"; // All Resources
-import {} from "dotenv/config";
+import "dotenv/config";
 
 const app = new Koa();
 

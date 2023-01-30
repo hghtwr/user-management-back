@@ -1,6 +1,7 @@
 import Router from "@koa/router";
 import Koa from "koa";
 import { Gitlab } from "./git/gitlab.js";
+import "dotenv/config";
 
 const router = new Router();
 
@@ -15,10 +16,10 @@ router.get("/groups", async (ctx: Koa.Context, next: Koa.Next) => {
       host: "https://gitlab.com",
       token: process.env.gitlabToken,
     },
-    parseInt(process.env.topLevelGroup)
+    parseInt(process.env.topLevelGroup, 10)
   );
-  const project = await gitlab.Groups.all();
-  ctx.body = JSON.stringify(project);
+  const body = gitlab.getGroups();
+  ctx.body = JSON.stringify(body);
   next();
 });
 
