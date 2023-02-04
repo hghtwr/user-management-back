@@ -2,14 +2,11 @@ import Koa from "koa";
 import logger from "koa-logger";
 import * as HttpStatus from "http-status-codes";
 import { Router } from "./router.js";
-import { start } from "./startup.js";
 import "dotenv/config";
-
+import { Gitlab } from "./git/gitlab.js";
 const app = new Koa();
 
 app.use(logger());
-
-await start();
 
 app.use(async (ctx: Koa.Context, next: () => Promise<any>) => {
   try {

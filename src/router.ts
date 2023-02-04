@@ -1,8 +1,18 @@
 import Router from "@koa/router";
 import Koa from "koa";
-import { Gitlab } from "./git/gitlab.js";
+import { GitConfig, Gitlab } from "./git/gitlab.js";
 import "dotenv/config";
+import { Types } from "@gitbeaker/node/dist/types/index.js";
 
+const gitlab = new Gitlab(
+  {
+    host: "https://gitlab.com",
+    token: process.env.gitlabToken,
+  },
+  parseInt(process.env.topLevelGroup, 10)
+);
+
+gitlab.updateFileTree();
 const router = new Router();
 
 router.get("/version", (ctx: Koa.Context, next: Koa.Next) => {
@@ -10,15 +20,13 @@ router.get("/version", (ctx: Koa.Context, next: Koa.Next) => {
   next();
 });
 
-router.get("/groups", async (ctx: Koa.Context, next: Koa.Next) => {
-  const gitlab = new Gitlab(
-    {
-      host: "https://gitlab.com",
-      token: process.env.gitlabToken,
-    },
-    parseInt(process.env.topLevelGroup, 10)
-  );
-  const body = gitlab.getGroups();
+router.get("/filetree", async (ctx: Koa.Context, next: Koa.Next) => {
+  let body = gitlab.getFileTree();
+  if (ctx.query.filter) {
+    body = body.filter((item) => {
+      return item.type == ctx.query.filter;
+    });
+  }
   ctx.body = JSON.stringify(body);
   next();
 });

@@ -9,5 +9,5 @@ export async function start() {
     },
     parseInt(process.env.topLevelGroup)
   );
-  await gitlab.sync_repos();
+  await gitlab.updateFileTree();
 }

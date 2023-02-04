@@ -2,6 +2,7 @@ import { Gitlab, Types } from "@gitbeaker/node"; // All Resources
 import fs from "fs";
 import "dotenv/config";
 import * as path from "path";
+import { MemberSchema } from "@gitbeaker/core/dist/types/types";
 
 interface GitConfig {
   host: string;
@@ -10,35 +11,43 @@ interface GitConfig {
 
 class MyGitlab extends Gitlab {
   topLevelGroup: number;
+  entities: {
+    projects: Types.ProjectSchema[];
+    groups: Types.GroupDetailSchema[];
+  };
 
   constructor(config: GitConfig, topLevelGroup: number) {
     super(config);
     this.topLevelGroup = topLevelGroup;
   }
 
-  /**
-   * Should sync the repos and create the according .groups .project files to keep the state up.
-   * Should automatically run during startup of the api.
-   */
-  async sync_repos() {
-    const entities = await this.getGroups();
+  async updateFileTree() {
+    console.log("Loading groups/projects...");
+    this.entities = await this.getEntities();
+  }
 
-    entities.groups.forEach((item: Types.GroupDetailSchema) => {
-      try {
-        fs.mkdirSync(this.getFolderPath(item.full_path), { recursive: true });
-      } catch (error) {
-        console.error(error);
-      }
+  getFileTree() {
+    const groups = this.entities.groups.map((entity) => {
+      return {
+        path: entity.full_path,
+        id: entity.id,
+        type: "group",
+      };
     });
+    const projects = this.entities.projects.map((entity) => {
+      return {
+        path: entity.path_with_namespace,
+        id: entity.id,
+        type: "project",
+      };
+    });
+    return [...groups, ...projects];
   }
 
-  getFolderPath(pathString: string): fs.PathLike {
-    let paths: string[] = pathString.split("/");
-    paths = paths.slice(0, paths.length);
-    return path.join(...paths);
-  }
-
-  async getGroups() {
+  async getEntities(): Promise<{
+    projects: Types.ProjectSchema[];
+    groups: Types.GroupDetailSchema[];
+  }> {
     const topLevelGroup: Types.GroupDetailSchema = await this.Groups.show(
       this.topLevelGroup
     );
@@ -49,14 +58,11 @@ class MyGitlab extends Gitlab {
       this.topLevelGroup
     );
     return {
-      projects,
+      projects: [...projects],
       groups: [topLevelGroup, ...subgroups],
     };
   }
 
-  /**
-   * Recursively loops through groups to deliver the subgroups in one big array
-   */
   async getSubGroup(groupId: number): Promise<Types.GroupDetailSchema[]> {
     const groups: Record<string, unknown> = await this.Groups.subgroups(
       groupId
@@ -68,10 +74,11 @@ class MyGitlab extends Gitlab {
         i
       ] as Types.GroupDetailSchema;
       groupArray.push(group);
+
       groupArray.push(...(await this.getSubGroup(group.id)));
     }
     return groupArray;
   }
 }
 
-export { MyGitlab as Gitlab };
+export { MyGitlab as Gitlab, GitConfig as GitConfig };
