@@ -1,14 +1,19 @@
 _id: req_7e557be264284d87abde9a4372d2e603
 type: Request
 parentId: wrk_cf7e2faabf2c47f2b5789ae6fd3745af
-modified: 1675017263824
+modified: 1675520411345
 created: 1675016993643
-url: http://localhost:3000/groups
-name: /groups
-description: ""
+url: http://localhost:3000/filetree
+name: /filetree
+description: Gets all groups and subgroups of top level group
 method: GET
 body: {}
-parameters: []
+parameters:
+  - id: pair_7fb2fcb3d25e4234aca4c540a0d7e35a
+    name: filter
+    value: project
+    description: Will return only items of this type. Either "project" or "group".
+    disabled: false
 headers: []
 authentication: {}
 metaSortKey: -1675016993643
@@ -17,5 +22,5 @@ settingStoreCookies: true
 settingSendCookies: true
 settingDisableRenderRequestBody: false
 settingEncodeUrl: true
-settingRebuildPath: true
+settingRebuildPath: false
 settingFollowRedirects: global
