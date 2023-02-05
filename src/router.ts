@@ -42,11 +42,11 @@ router.get("/users", async (ctx: Koa.Context, next: Koa.Next) => {
       query: ctx.query.username,
     });
 
-    var users = await gitlab.Users.search(search);
+    ctx.body = await gitlab.Users.search(search);
   } else {
-    var users = await gitlab.Users.all();
+    ctx.body = await gitlab.getAllUsers();
   }
-  ctx.body = JSON.stringify(users);
+
   next();
 });
 
