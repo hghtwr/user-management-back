@@ -3,64 +3,66 @@ import fs from "fs";
 import "dotenv/config";
 import * as path from "path";
 import { MemberSchema } from "@gitbeaker/core/dist/types/types";
-
+import { oBaseLogger } from "../logger.js";
 interface GitConfig {
   host: string;
   token: string;
 }
+interface MyGroupSchema extends Types.GroupDetailSchema {
+  type: string;
+}
 
 class MyGitlab extends Gitlab {
   topLevelGroup: number;
-  entities: {
-    projects: Types.ProjectSchema[];
-    groups: Types.GroupDetailSchema[];
-  };
+  entities: (MyGroupSchema | Types.ProjectSchema)[];
 
   constructor(config: GitConfig, topLevelGroup: number) {
     super(config);
     this.topLevelGroup = topLevelGroup;
   }
+  getEntityById(id: number) {
+    return this.entities.filter((entity) => {
+      return entity.id == id;
+    });
+  }
+
+  async getEntityUsers(id: number) {
+    let entity = this.getEntityById(id)[0];
+    if (entity.type == "group") {
+      return await this.GroupMembers.all(id);
+    } else {
+      return await this.ProjectMembers.all(id);
+    }
+  }
+
+  getAllUsers() {}
 
   async updateFileTree() {
-    console.log("Loading groups/projects...");
+    oBaseLogger.info("Starting file tree update");
     this.entities = await this.getEntities();
+    oBaseLogger.info("Finished file tree update");
   }
 
   getFileTree() {
-    const groups = this.entities.groups.map((entity) => {
-      return {
-        path: entity.full_path,
-        id: entity.id,
-        type: "group",
-      };
-    });
-    const projects = this.entities.projects.map((entity) => {
-      return {
-        path: entity.path_with_namespace,
-        id: entity.id,
-        type: "project",
-      };
-    });
-    return [...groups, ...projects];
+    return this.entities;
   }
 
-  async getEntities(): Promise<{
-    projects: Types.ProjectSchema[];
-    groups: Types.GroupDetailSchema[];
-  }> {
-    const topLevelGroup: Types.GroupDetailSchema = await this.Groups.show(
-      this.topLevelGroup
+  async getEntities(): Promise<(MyGroupSchema | Types.ProjectSchema)[]> {
+    let topLevelGroup = await this.Groups.show(this.topLevelGroup);
+    let subgroups = await this.getSubGroup(this.topLevelGroup);
+    let projects = await this.Groups.projects(this.topLevelGroup);
+
+    projects = projects.map((project) => {
+      project.type = "project";
+      return project;
+    });
+    let allGroups: MyGroupSchema[] = [topLevelGroup, ...subgroups].map(
+      (group: MyGroupSchema) => {
+        group.type = "group";
+        return group as MyGroupSchema;
+      }
     );
-    const subgroups: Types.GroupDetailSchema[] = await this.getSubGroup(
-      this.topLevelGroup
-    );
-    const projects: Types.ProjectSchema[] = await this.Groups.projects(
-      this.topLevelGroup
-    );
-    return {
-      projects: [...projects],
-      groups: [topLevelGroup, ...subgroups],
-    };
+    return [...projects, ...allGroups];
   }
 
   async getSubGroup(groupId: number): Promise<Types.GroupDetailSchema[]> {
