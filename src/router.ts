@@ -12,7 +12,10 @@ const gitlab = new Gitlab(
   parseInt(process.env.topLevelGroup, 10)
 );
 
-gitlab.updateFileTree();
+await gitlab.updateFileTree();
+
+//has to run in order as syncAllUsers will user the filetree
+await gitlab.syncAllUsers();
 const router = new Router();
 
 router.get("/version", (ctx: Koa.Context, next: Koa.Next) => {
@@ -20,13 +23,25 @@ router.get("/version", (ctx: Koa.Context, next: Koa.Next) => {
   next();
 });
 
-router.get("/filetree", async (ctx: Koa.Context, next: Koa.Next) => {
+router.get("/groups", async (ctx: Koa.Context, next: Koa.Next) => {
   let body = gitlab.getFileTree();
   if (ctx.query.filter) {
     body = body.filter((item) => {
       return item.type == ctx.query.filter;
     });
   }
+  ctx.body = JSON.stringify(body);
+  next();
+});
+
+router.get("/groups/:id", async (ctx: Koa.Context, next: Koa.Next) => {
+  oBaseLogger.info("/groups", {
+    id: ctx.param.id,
+  });
+  let body = gitlab.getFileTree();
+  body = body.filter((item) => {
+    return item.id == ctx.param.id;
+  });
   ctx.body = JSON.stringify(body);
   next();
 });
@@ -49,7 +64,14 @@ router.get("/users", async (ctx: Koa.Context, next: Koa.Next) => {
 
   next();
 });
-
+router.get("/users/:id/groups", async (ctx: Koa.Context, next: Koa.Next) => {
+  const id = ctx.params.id;
+  oBaseLogger.info("/users/:id/groups", {
+    id,
+  });
+  ctx.body = gitlab.getUserGroups(id);
+  next();
+});
 router.get("/groups/:id/users", async (ctx: Koa.Context, next: Koa.Next) => {
   oBaseLogger.info("/groups/" + ctx.params.id + "/users called");
   let id = ctx.params.id;

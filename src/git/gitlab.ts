@@ -18,12 +18,13 @@ interface MyGroupSchema extends Types.GroupDetailSchema {
 
 interface MyUserSchema {
   user: MemberSchema;
-  usergroups: [{ id: number; access_level: number }];
+  //usergroups: [{ id: number; access_level: number }];
+  usergroups: [{ id: number; userInfo: Types.MemberSchema }];
 }
 class MyGitlab extends Gitlab {
   topLevelGroup: number;
   entities: (MyGroupSchema | Types.ProjectSchema)[];
-
+  users: MyUserSchema[];
   constructor(config: GitConfig, topLevelGroup: number) {
     super(config);
     this.topLevelGroup = topLevelGroup;
@@ -54,7 +55,9 @@ class MyGitlab extends Gitlab {
   // TO-DO: MAke this to be executed once in the beginning and then synced on demand.
   // TO-DO: Extend usergroups to also have the rest of the user information as this could be different, e.g. expires at
 
-  async getAllUsers() {
+  async syncAllUsers() {
+    oBaseLogger.info("Starting user update");
+
     let promises: Promise<Types.MemberSchema[]>[] = [];
     for (let i = 0; i < this.entities.length; i++) {
       if (this.entities[i].type == "group") {
@@ -78,7 +81,8 @@ class MyGitlab extends Gitlab {
         if (existingUser.length > 0) {
           existingUser[0].usergroups.push({
             id: this.entities[j].id,
-            access_level: groupUsers[j][k].access_level,
+            userInfo: groupUsers[j][k],
+            //access_level: groupUsers[j][k].access_level,
           });
         } else {
           users.push({
@@ -86,15 +90,16 @@ class MyGitlab extends Gitlab {
             usergroups: [
               {
                 id: this.entities[j].id,
-                access_level: groupUsers[j][k].access_level,
+                userInfo: groupUsers[j][k],
+                //access_level: groupUsers[j][k].access_level,
               },
             ],
           });
         }
       }
     }
-
-    return users;
+    this.users = users;
+    oBaseLogger.info("Finished user update");
   }
 
   async updateFileTree() {
@@ -103,6 +108,9 @@ class MyGitlab extends Gitlab {
     oBaseLogger.info("Finished file tree update");
   }
 
+  getAllUsers() {
+    return this.users;
+  }
   getFileTree() {
     return this.entities;
   }
@@ -149,6 +157,11 @@ class MyGitlab extends Gitlab {
     } else {
       return [...promisedGroups];
     }
+  }
+  getUserGroups(userId: number): MyUserSchema {
+    return this.users.filter((user) => {
+      return user.user.id == userId;
+    })[0];
   }
 }
 
