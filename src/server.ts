@@ -1,9 +1,13 @@
-import Koa, { HttpError } from "koa";
+import Koa from "koa";
 import logger from "koa-logger";
 import * as HttpStatus from "http-status-codes";
+import { Router } from "./router.js";
+import "dotenv/config";
+import { Gitlab } from "./git/gitlab.js";
 const app = new Koa();
 
 app.use(logger());
+
 app.use(async (ctx: Koa.Context, next: () => Promise<any>) => {
   try {
     await next();
@@ -17,9 +21,6 @@ app.use(async (ctx: Koa.Context, next: () => Promise<any>) => {
     ctx.app.emit("error", error, ctx);
   }
 });
-
-app.use(async (ctx: Koa.Context) => {
-  ctx.body = "Hello world!";
-});
+app.use(Router.routes());
 
 app.listen(3000);

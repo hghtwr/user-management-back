@@ -1,0 +1,50 @@
+_id: spc_1a5b82900da04bfb9099da2bcb3a2c13
+type: ApiSpec
+parentId: wrk_cf7e2faabf2c47f2b5789ae6fd3745af
+modified: 1675522321237
+created: 1675017659005
+fileName: user-management-back
+contents: |
+  openapi: 3.0.0
+  servers:
+  - url: https://jsonplaceholder.typicode.com
+    description: JSONPlaceholder
+  info:
+    description: "Service for gitlab user api"
+    version: 0.0.1
+    title: Improved Gitlab User API
+    contact:
+      email: johannes.sonner@focusedsolutions.de
+    license:
+      name: Apache 2.0
+      url: http://www.apache.org/licenses/LICENSE-2.0.html
+  tags:
+    - name: filetree
+      description: A filetree of all your groups and projects
+  paths:
+    /filetree:
+      get:
+        tags:
+          - filetree
+        summary: Will give you all groups and projects as flat file tree
+        description: "Will give you all groups and projects as flat file tree"
+        operationId: "getFileTree"
+        responses:
+           "200": 
+             description: Success
+             content: 
+               application/json: 
+                 schema:
+                    type: array
+                    items: 
+                      properties:
+                        path: 
+                          type: string
+                          description: The full path of the entity
+                        id:
+                          type: integer
+                          description: The user ID.
+                        type:
+                          type: string
+                          description: Either "group" or "project".
+contentType: yaml
