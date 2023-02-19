@@ -14,9 +14,14 @@ interface GitConfig {
 }
 interface MyGroupSchema extends Types.GroupDetailSchema {
   type: string;
+  subgroups: MyGroupSchema[];
 }
-
-interface MyUserSchema {
+interface MyFileTreeSchema {
+  name: string;
+  type: string;
+  children: MyFileTreeSchema[];
+}
+export interface MyUserSchema {
   user: MemberSchema;
   //usergroups: [{ id: number; access_level: number }];
   usergroups: [{ id: number; userInfo: Types.MemberSchema }];
@@ -25,6 +30,7 @@ class MyGitlab extends Gitlab {
   topLevelGroup: number;
   entities: (MyGroupSchema | Types.ProjectSchema)[];
   users: MyUserSchema[];
+  orderedEntities: MyFileTreeSchema;
   constructor(config: GitConfig, topLevelGroup: number) {
     super(config);
     this.topLevelGroup = topLevelGroup;
@@ -114,10 +120,14 @@ class MyGitlab extends Gitlab {
   getFileTree() {
     return this.entities;
   }
+  getOrderedEntities() {
+    return this.orderedEntities;
+  }
 
   async getEntities(): Promise<(MyGroupSchema | Types.ProjectSchema)[]> {
     let topLevelGroup = this.Groups.show(this.topLevelGroup);
     let subgroups = this.getSubGroups(this.topLevelGroup);
+    //let subgroups = this.getOrderedSubgroups(this.topLevelGroup);
     let projects = this.Groups.projects(this.topLevelGroup);
     let tlgData = await topLevelGroup;
     let subGroupData = await subgroups;
@@ -136,6 +146,86 @@ class MyGitlab extends Gitlab {
     return [...projectData, ...allGroups];
   }
 
+  orderEntities() {
+    const topLevelGroup = this.entities.filter((entity) => {
+      return entity.id == this.topLevelGroup;
+    })[0] as MyGroupSchema;
+    const orderedSubgroups = this.parseFileTree(
+      this.getChild(
+        this.entities.filter((entity) => {
+          return entity.id == topLevelGroup.id;
+        })[0] as MyGroupSchema
+      )
+    );
+    this.orderedEntities = {
+      name: topLevelGroup.full_name,
+      type: "group",
+      children: orderedSubgroups,
+    };
+  }
+
+  parseFileTree(groups: (MyGroupSchema | Types.ProjectSchema)[]) {
+    let results: MyFileTreeSchema[] = [];
+    for (let i = 0; i < groups.length; i++) {
+      if (groups[i].type == "group") {
+        const group = groups[i] as MyGroupSchema;
+        results.push({
+          name: group.name,
+          type: "group",
+          children: this.parseFileTree(group.subgroups),
+        });
+      } else {
+        const project = groups[i] as Types.ProjectSchema;
+        results.push({
+          name: project.name,
+          type: "project",
+          children: [],
+        });
+      }
+    }
+    return results;
+  }
+
+  getChild(group: MyGroupSchema): (MyGroupSchema | Types.ProjectSchema)[] {
+    const childs = this.entities.filter((entity) => {
+      if (entity.type == "group") {
+        entity = entity as MyGroupSchema;
+        const groupLevel = group.full_path.split("/"); // Get the level of the parentgroup by / --> group/subgroup/subsubgroup ==> 3
+        return (
+          entity.full_path.startsWith(group.full_path) &&
+          entity.full_path.split("/").length == groupLevel.length + 1 // only select the next lower level, otherwise stackOverflow...
+        ); // childrens fullpath is longer than parents --> startsWith
+      } else {
+        entity = entity as ProjectSchema;
+        return entity.path_with_namespace.startsWith(group.full_path);
+      }
+    });
+
+    for (let i = 0; i < childs.length; i++) {
+      if (childs[i].type == "group") {
+        // Projects are always lowest hierachie and do not have any subelements
+        childs[i].subgroups = this.getChild(childs[i] as MyGroupSchema);
+      }
+    }
+    return childs;
+  }
+  /* Just takes too long for larger amount of entities...
+
+  async getOrderedSubgroups(groupId: number) {
+    const subgroups = await this.Groups.subgroups(groupId);
+    const groupPromises = [];
+    let fetchedGroups: MyGroupSchema[] = []; // Group of the current level, already fetched
+
+    for (let i = 0; i < subgroups.length; i++) {
+      const group = subgroups[i] as MyGroupSchema;
+      groupPromises.push();
+      let groups: MyGroupSchema[] = await this.getOrderedSubgroups(group.id);
+      group.subgroups = groups;
+      fetchedGroups.push(group);
+    }
+    return fetchedGroups;
+  }
+*/
   async getSubGroups(groupId: number): Promise<any> {
     const subgroups = await this.Groups.subgroups(groupId);
     let groupPromises = []; // subgroups to be fetched

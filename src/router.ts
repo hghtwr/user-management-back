@@ -1,6 +1,6 @@
 import Router from "@koa/router";
 import Koa from "koa";
-import { GitConfig, Gitlab } from "./git/gitlab.js";
+import { GitConfig, Gitlab, MyUserSchema } from "./git/gitlab.js";
 import "dotenv/config";
 import { Types } from "@gitbeaker/node/dist/types/index.js";
 import { fnKoaErrorLog, oBaseLogger } from "./logger.js";
@@ -16,6 +16,7 @@ await gitlab.updateFileTree();
 
 //has to run in order as syncAllUsers will user the filetree
 await gitlab.syncAllUsers();
+await gitlab.orderEntities();
 const router = new Router();
 
 router.get("/version", (ctx: Koa.Context, next: Koa.Next) => {
@@ -31,9 +32,17 @@ router.get("/groups", async (ctx: Koa.Context, next: Koa.Next) => {
     });
   }
   ctx.body = JSON.stringify(body);
+  ctx.set("X-total-count", body.length.toString());
+
   next();
 });
+router.get("/filetree", async (ctx: Koa.Context, next: Koa.Next) => {
+  let body = gitlab.getOrderedEntities();
 
+  ctx.body = JSON.stringify(body);
+
+  next();
+});
 router.get("/groups/:id", async (ctx: Koa.Context, next: Koa.Next) => {
   oBaseLogger.info("/groups", {
     id: ctx.param.id,
@@ -56,10 +65,11 @@ router.get("/users", async (ctx: Koa.Context, next: Koa.Next) => {
     oBaseLogger.info("/users", {
       query: ctx.query.username,
     });
-
     ctx.body = await gitlab.Users.search(search);
   } else {
+    const user: MyUserSchema[] = await gitlab.getAllUsers();
     ctx.body = await gitlab.getAllUsers();
+    ctx.set("X-total-count", user.length.toString());
   }
 
   next();
