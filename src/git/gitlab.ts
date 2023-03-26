@@ -19,7 +19,8 @@ interface MyGroupSchema extends Types.GroupDetailSchema {
 interface MyFileTreeSchema {
   name: string;
   type: string;
-  children: MyFileTreeSchema[];
+  id: number;
+  children?: MyFileTreeSchema[];
 }
 export interface MyUserSchema {
   user: MemberSchema;
@@ -160,6 +161,7 @@ class MyGitlab extends Gitlab {
     this.orderedEntities = {
       name: topLevelGroup.full_name,
       type: "group",
+      id: topLevelGroup.id,
       children: orderedSubgroups,
     };
   }
@@ -172,14 +174,18 @@ class MyGitlab extends Gitlab {
         results.push({
           name: group.name,
           type: "group",
-          children: this.parseFileTree(group.subgroups),
+          id: group.id,
+          children:
+            group.subgroups.length > 0
+              ? this.parseFileTree(group.subgroups)
+              : null,
         });
       } else {
         const project = groups[i] as Types.ProjectSchema;
         results.push({
+          id: project.id,
           name: project.name,
           type: "project",
-          children: [],
         });
       }
     }
